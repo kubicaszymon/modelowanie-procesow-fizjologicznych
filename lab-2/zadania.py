@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
 
 ETA = 3.5e-3 # Pa*s
 MMHG = 133.322 # Pa/mmHg
@@ -225,23 +224,35 @@ ax3.set_title('Rozklad oporow w poszczeglnych typach naczyn', fontsize=12, fontw
 ax3.set_yscale('log')
 ax3.grid(axis='y', alpha=0.3, which='both')
 
-# Wzgledna zmiana przeplywu przy zmianie promienia
 ax4 = plt.subplot(2, 2, 4)
-radius_pct = [-10, -5, 0, 5, 10]
-Q_changes = []
-for pct in radius_pct:
-    term_mod = [Vessel(L=t.L, r=t.r * (1 + pct/100), eta=t.eta) for t in term]
-    flows_mod = calculate_flows(aorta, branch1, branch2, term_mod, P_in, P_out)
-    change_pct = ((flows_mod['Q_total'] - flows['Q_total']) / flows['Q_total']) * 100
-    Q_changes.append(change_pct)
+L_values = np.linspace(0.1, 0.5, 30)
+Q_vals = []
+R_vals = []
 
-ax4.plot(radius_pct, Q_changes, 'o-', color='#2E86AB', linewidth=2, markersize=8)
-ax4.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
-ax4.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
-ax4.set_xlabel('Zmiana promienia tetniczek [%]', fontsize=11)
-ax4.set_ylabel('Zmiana przeplywu calkowitego [%]', fontsize=11)
-ax4.set_title('Wrazliwość przeplywu na zmiane promienia', fontsize=12, fontweight='bold')
+for L in L_values:
+    branch_mod = Vessel(L=L, r=0.006, eta=ETA)
+    flows_mod = calculate_flows(aorta, branch_mod, branch2, term, P_in, P_out)
+    Q_vals.append(flows_mod['Q_path1'] * 1e6)
+    R_vals.append(branch_mod.R / 1e9)
+
+ax4_twin = ax4.twinx()
+line1 = ax4.plot(L_values * 100, Q_vals, 'o-', color='#2E86AB', linewidth=2.5, 
+                 markersize=5, label='Przeplyw')
+line2 = ax4_twin.plot(L_values * 100, R_vals, 's-', color='#F18F01', linewidth=2.5, 
+                      markersize=5, label='Opor')
+
+ax4.axvline(x=20, color='red', linestyle='--', alpha=0.6, linewidth=1.5)
+ax4.set_xlabel('Dlugość galezi [cm]', fontsize=11)
+ax4.set_ylabel('Przeplyw [ml/s]', fontsize=11, color='#2E86AB')
+ax4_twin.set_ylabel('Opor [10^9 Pa·s/m³]', fontsize=11, color='#F18F01')
+ax4.set_title('Wplyw dlugosci galezi na przeplyw i opor', fontsize=12, fontweight='bold')
+ax4.tick_params(axis='y', labelcolor='#2E86AB')
+ax4_twin.tick_params(axis='y', labelcolor='#F18F01')
 ax4.grid(True, alpha=0.3)
+
+lines = line1 + line2
+labels = [l.get_label() for l in lines]
+ax4.legend(lines, labels, fontsize=9, loc='upper left')
 
 plt.tight_layout()
 plt.savefig('analiza_przeplywow.png', dpi=300, bbox_inches='tight')
